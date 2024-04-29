@@ -175,7 +175,7 @@ int openport(char *port,speed_t speed)
 	int fd;
 	struct termios my_termios;
 
-	fd = open(port, O_RDWR | O_NOCTTY);
+	fd = open(port, O_RDWR | O_NOCTTY | O_NONBLOCK);
 
 	if (fd < 0)
 	{
@@ -196,8 +196,17 @@ int openport(char *port,speed_t speed)
 	}
 
 
-	my_termios.c_cflag =  CS8 |CREAD | CLOCAL | HUPCL;
-	cfmakeraw(&my_termios);
+	my_termios.c_cflag &= ~CSIZE;
+	my_termios.c_cflag |= CS8;                             // 8 data bits
+	my_termios.c_cflag |= CLOCAL | CREAD;                  // enable receiver, set local mode
+	my_termios.c_cflag &= ~PARENB;                         // no parity
+	my_termios.c_cflag &= ~CSTOPB;                         // 1 stop bit
+	my_termios.c_cflag &= ~CRTSCTS;                        // no h/w handshake
+	my_termios.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG); // raw input
+	my_termios.c_oflag &= ~OPOST;                          // raw output
+	my_termios.c_iflag &= ~IXON;                           // software flow control disabled
+	my_termios.c_iflag &= ~ICRNL;                          // do not translate CR to NL
+	cfsetispeed(&my_termios, speed);
 	cfsetospeed(&my_termios, speed);
 	if (	tcsetattr(fd, TCSANOW, &my_termios))
 	{
